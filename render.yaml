@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: gunsy
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: MODERATION_KEY
+        sync: false
