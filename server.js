@@ -69,7 +69,61 @@ const MOD_KEY = getModKey();
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
-app.get('/api/messages', (req, res) => {
+const SB_URL = process.env.SUPABASE_URL || null;
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY || null;
+const USE_SB = !!(SB_URL && SB_KEY);
+
+function sbHeaders(json) {
+  const h = {
+    apikey: SB_KEY,
+    Authorization: 'Bearer ' + SB_KEY
+  };
+  if (json) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+async function sbList() {
+  const r = await fetch(`${SB_URL}/rest/v1/messages?select=id,author,content,image,created_at&order=created_at.desc`, { headers: sbHeaders() });
+  if (!r.ok) throw new Error(`SB list ${r.status}`);
+  return r.json();
+}
+
+async function sbInsert(msg) {
+  const r = await fetch(`${SB_URL}/rest/v1/messages`, {
+    method: 'POST',
+    headers: sbHeaders(true),
+    body: JSON.stringify({ id: msg.id, author: msg.author, content: msg.content, image: msg.image, created_at: msg.createdAt })
+  });
+  if (!r.ok) throw new Error(`SB insert ${r.status}: ${await r.text()}`);
+}
+
+async function sbUploadImage(fileBuffer, mime, ext) {
+  const name = uuidv4() + ext;
+  const r = await fetch(`${SB_URL}/storage/v1/object/images/${name}`, {
+    method: 'POST',
+    headers: { ...sbHeaders(), 'Content-Type': mime },
+    body: fileBuffer
+  });
+  if (!r.ok) throw new Error(`SB upload ${r.status}: ${await r.text()}`);
+  return `${SB_URL}/storage/v1/object/public/images/${name}`;
+}
+
+async function ensureBucket() {
+  try {
+    await fetch(`${SB_URL}/storage/v1/bucket`, {
+      method: 'POST',
+      headers: sbHeaders(true),
+      body: JSON.stringify({ id: 'images', name: 'images', public: true })
+    });
+  } catch {}
+}
+
+app.get('/api/messages', async (req, res) => {
+  try {
+    if (USE_SB) return res.json(await sbList());
+  } catch (err) {
+    console.error('Supabase list failed:', err.message);
+  }
   const messages = readMessages();
   messages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   res.json(messages);
@@ -90,6 +144,22 @@ app.post('/api/messages', upload.single('image'), async (req, res) => {
   };
 
   if (!DISCORD_WEBHOOK_URL) {
+    if (USE_SB) {
+      try {
+        if (req.file) {
+          msg.image = await sbUploadImage(
+            fs.readFileSync(req.file.path),
+            req.file.mimetype,
+            path.extname(req.file.originalname).toLowerCase()
+          );
+        }
+        await sbInsert(msg);
+        try { fs.unlinkSync(req.file.path); } catch {}
+        return res.status(201).json({ ...msg, pending: false });
+      } catch (err) {
+        console.error('Supabase store failed:', err.message);
+      }
+    }
     const messages = readMessages();
     messages.push(msg);
     writeMessages(messages);
@@ -164,7 +234,7 @@ p{color:#71717a;margin:0;font-size:.9rem}
 <body><div class="card"><h1 style="color:${color}">${title}</h1><p>${sub}</p></div></body></html>`;
 }
 
-app.get('/api/mod/accept', (req, res) => {
+app.get('/api/mod/accept', async (req, res) => {
   const { id, key } = req.query;
   if (!id || !keyMatches(key)) return res.status(401).send(modPage('Unauthorized', '#ed4245', 'Invalid link or key.'));
   const pending = readPending();
@@ -173,6 +243,26 @@ app.get('/api/mod/accept', (req, res) => {
   const msg = pending[idx];
   pending.splice(idx, 1);
   writePending(pending);
+
+  if (USE_SB) {
+    try {
+      let image = msg.image;
+      if (image && image.startsWith('/uploads/')) {
+        const abs = path.join(__dirname, 'uploads', path.basename(image));
+        if (fs.existsSync(abs)) {
+          const buf = fs.readFileSync(abs);
+          const mime = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' }[path.extname(image).toLowerCase()] || 'application/octet-stream';
+          image = await sbUploadImage(buf, mime, path.extname(image));
+          try { fs.unlinkSync(abs); } catch {}
+        }
+      }
+      await sbInsert({ ...msg, image });
+      return res.send(modPage('✅ Approved', '#57f287', 'The message is now live on your page.'));
+    } catch (err) {
+      console.error('Supabase approve failed:', err.message);
+    }
+  }
+
   const messages = readMessages();
   messages.push(msg);
   writeMessages(messages);
@@ -200,5 +290,6 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
+  if (USE_SB) ensureBucket();
   console.log(`Server running on port ${PORT}`);
 });
