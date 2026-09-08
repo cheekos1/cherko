@@ -97,6 +97,53 @@ body{
   object-fit:cover;display:block;
 }
 
+/* --- Burn swap --- */
+.avatar-crop{cursor:pointer}
+#burnCanvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  z-index:3;pointer-events:none;
+  mix-blend-mode:screen;
+}
+.burn-overlay{
+  position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(circle at 50% 65%, rgba(255,140,30,.95), rgba(255,60,0,.65) 40%, rgba(140,0,0,.85) 70%, transparent 100%);
+  mix-blend-mode:screen;
+}
+.av.burning{animation:burnImg .9s ease forwards}
+@keyframes burnImg{
+  0%{filter:none}
+  25%{filter:brightness(1.5) sepia(.5) saturate(4) hue-rotate(-15deg)}
+  50%{filter:brightness(2) sepia(1) saturate(5) contrast(1.3) hue-rotate(-10deg)}
+  70%{filter:brightness(.5) sepia(1) saturate(4) contrast(1.5) blur(1px)}
+  90%{filter:brightness(1.2) sepia(.8) saturate(3) blur(.5px)}
+  100%{filter:none}
+}
+.burn-overlay.burning{animation:burnFlame .9s ease forwards}
+@keyframes burnFlame{
+  0%{opacity:0;transform:scale(.7)}
+  25%{opacity:.95;transform:scale(1)}
+  60%{opacity:1;transform:scale(1.06)}
+  85%{opacity:.5;transform:scale(1.1)}
+  100%{opacity:0;transform:scale(1.14)}
+}
+.ember{
+  position:absolute;bottom:6px;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,#ffe07a,#ff7a00);
+  box-shadow:0 0 9px 2px rgba(255,120,0,.85);
+  pointer-events:none;z-index:4;
+  animation:emberRise .95s ease-out forwards;
+}
+@keyframes emberRise{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  100%{transform:translate(var(--ex),-110px) scale(.15);opacity:0}
+}
+.avatar-hint{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  font-size:.6rem;letter-spacing:2px;text-transform:uppercase;
+  color:rgba(255,255,255,.6);z-index:3;pointer-events:none;
+}
+
 /* --- Crown --- */
 .crown{
   position:absolute;left:50%;top:-34px;
@@ -145,13 +192,72 @@ body{
 
 /* --- Animated name --- */
 .name{
+  position:relative;display:inline-block;white-space:nowrap;
   font-family:'Space Grotesk',sans-serif;
-  font-size:2.4rem;font-weight:800;letter-spacing:.5px;
+  font-size:2.4rem;font-weight:800;
+  margin-bottom:8px;
+}
+.name-en{
+  display:block;letter-spacing:.5px;
   background:linear-gradient(90deg,var(--accent),var(--pink),var(--cyan),var(--pink),var(--accent));
   background-size:200% auto;
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  animation:gradientFlow 4s linear infinite, nameGlow 3s ease-in-out infinite;
-  margin-bottom:8px;
+  animation:gradientFlow 4s linear infinite, nameGlow 3s ease-in-out infinite, nameEnFade 6s infinite, nameEnGlitch 6s infinite;
+}
+.name::before{
+  content:attr(data-ar);
+  position:absolute;left:50%;top:0;transform:translateX(-50%);
+  direction:rtl;white-space:nowrap;letter-spacing:0;
+  background:linear-gradient(90deg,var(--accent),var(--pink),var(--cyan),var(--pink),var(--accent));
+  background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;pointer-events:none;z-index:2;
+  animation:gradientFlow 4s linear infinite, nameArGlitch 6s infinite;
+  transform-origin:center;
+}
+.name::after{
+  content:attr(data-en);
+  position:absolute;left:0;top:0;
+  white-space:nowrap;letter-spacing:.5px;
+  background:linear-gradient(90deg,var(--accent),var(--pink),var(--cyan),var(--pink),var(--accent));
+  background-size:200% auto;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  opacity:0;pointer-events:none;z-index:1;
+  animation:gradientFlow 4s linear infinite, nameEnSlices 6s infinite;
+}
+@keyframes nameArGlitch{
+  0%, 34%{opacity:0;transform:translateX(-50%);clip-path:inset(0 0 100% 0);text-shadow:none}
+  36%, 38%{opacity:.9;transform:translateX(-50%) translateY(1px) translateX(-2px);clip-path:inset(15% 0 55% 0);text-shadow:2px 0 #f0f,-2px 0 #0ff}
+  40%, 42%{opacity:.95;transform:translateX(-50%) translateY(-1px) translateX(2px);clip-path:inset(55% 0 15% 0);text-shadow:-2px 0 #0ff,2px 0 #f0f}
+  44%{opacity:1;transform:translateX(-50%);clip-path:inset(0 0 0 0);text-shadow:none}
+  78%{opacity:1;transform:translateX(-50%);clip-path:inset(0 0 0 0);text-shadow:none}
+  80%, 82%{opacity:.9;transform:translateX(-50%) translateY(1px) translateX(2px);clip-path:inset(30% 0 40% 0);text-shadow:2px 0 #f0f,-2px 0 #0ff}
+  84%, 86%{opacity:.95;transform:translateX(-50%) translateY(-1px) translateX(-2px);clip-path:inset(60% 0 10% 0);text-shadow:-2px 0 #0ff,2px 0 #f0f}
+  88%{opacity:0;transform:translateX(-50%);clip-path:inset(0 0 100% 0);text-shadow:none}
+  100%{opacity:0;transform:translateX(-50%);clip-path:inset(0 0 100% 0);text-shadow:none}
+}
+@keyframes nameEnFade{
+  0%, 34%{opacity:1}
+  36%, 40%{opacity:.6}
+  44%, 78%{opacity:0}
+  80%, 84%{opacity:.5}
+  86%, 88%{opacity:.8}
+  100%{opacity:1}
+}
+@keyframes nameEnGlitch{
+  0%, 34%{transform:none;text-shadow:none}
+  36%, 38%{transform:translate(-1px,0);text-shadow:-1px 0 #0ff}
+  40%, 42%{transform:translate(1px,0);text-shadow:1px 0 #f0f}
+  44%, 78%{transform:none;text-shadow:none;opacity:0}
+  80%, 82%{transform:translate(-1px,0);text-shadow:-1px 0 #0ff}
+  84%, 86%{transform:translate(1px,0);text-shadow:1px 0 #f0f}
+  88%, 100%{transform:none;text-shadow:none}
+}
+@keyframes nameEnSlices{
+  0%, 34%{opacity:0}
+  36%, 38%{opacity:.7;clip-path:inset(20% 0 50% 0);transform:translate(-2px,0)}
+  40%, 42%{opacity:.7;clip-path:inset(60% 0 10% 0);transform:translate(2px,0)}
+  44%, 100%{opacity:0}
 }
 @keyframes gradientFlow{
   to{background-position:200% center}
@@ -512,28 +618,25 @@ body{
         <div class="crown-shine"></div>
       </div>
       <div class="avatar-ring">
-        <div class="avatar-crop">
-          <img class="av" src="profile.jpg" alt="Abo Cherko">
+        <div class="avatar-crop" id="avatarCrop">
+          <img class="av" id="avatarImg" src="profile.jpg" alt="Abo Cherko">
+          <canvas id="burnCanvas"></canvas>
+          <div class="burn-overlay" id="burnOverlay"></div>
+          <span class="avatar-hint">click to burn</span>
         </div>
       </div>
     </div>
-    <h1 class="name">Abo Cherko</h1>
+    <h1 class="name" data-en="Abo Cherko" data-ar="ربك الأعلى">
+      <span class="name-en">Abo Cherko</span>
+    </h1>
     <p class="bio" data-en="My Enemies are Many .. My Equals are None" data-ar="أعدائي كثيرون .. لا أنداد لي">My Enemies are Many .. My Equals are None</p>
   </section>
 
   <!-- SOCIAL LINKS -->
   <nav class="socials">
-    <a href="https://twitter.com/" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-      Twitter
-    </a>
-    <a href="https://instagram.com/" target="_blank" rel="noopener">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-      Instagram
-    </a>
-    <a href="https://discord.com/" target="_blank" rel="noopener">
+    <a href="https://discord.com/users/cherkos01" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/></svg>
-      Discord
+      cherkos01
     </a>
   </nav>
 
@@ -550,8 +653,8 @@ body{
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="4,5 12,12 4,19"/><rect x="14" y="5" width="2" height="14"/></svg>
     </button>
     <div class="player-info">
-      <div class="player-title" id="trackTitle">أنا المركز الأول بالبطولات</div>
-      <div class="player-artist" id="trackArtist">كرار علي</div>
+      <div class="player-title" id="trackTitle">Hassan El Sabbah</div>
+      <div class="player-artist" id="trackArtist">حمورابي</div>
       <div class="progress-bar" id="progressBar">
         <div class="progress-fill" id="progressFill"></div>
       </div>
@@ -624,8 +727,8 @@ const currentTimeEl = document.getElementById('currentTime');
 const durationEl = document.getElementById('duration');
 
 const PLAYLIST = [
-  { id: 'VI8GKhl05Pc', title: 'أنا المركز الأول بالبطولات', artist: 'كرار علي' },
-  { id: 'F3ZV_S2W_Io', title: 'Hassan El Sabbah', artist: 'حمورابي' }
+  { id: 'F3ZV_S2W_Io', title: 'Hassan El Sabbah', artist: 'حمورابي' },
+  { id: 'oefimHfYeu8', title: 'Wants and Needs', artist: 'Drake ft. Lil Baby' }
 ];
 
 let ytPlayer = null;
@@ -790,6 +893,114 @@ function fmt(s) {
   const sec = Math.floor(s % 60);
   return m + ':' + String(sec).padStart(2, '0');
 }
+
+// --- Burn swap ---
+const avatarImg = document.getElementById('avatarImg');
+const avatarCrop = document.getElementById('avatarCrop');
+const burnOverlay = document.getElementById('burnOverlay');
+const burnCanvas = document.getElementById('burnCanvas');
+const bctx = burnCanvas.getContext('2d');
+const IMGS = ['profile.jpg', 'second.jpg'];
+let imgIdx = 0;
+let burning = false;
+
+function sizeCanvas() {
+  burnCanvas.width = avatarCrop.clientWidth;
+  burnCanvas.height = avatarCrop.clientHeight;
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
+
+let fireParticles = [];
+let fireStart = 0;
+let fireRaf = null;
+
+function startFire(now) {
+  fireParticles = [];
+  fireStart = now;
+  fireRaf = requestAnimationFrame(fireLoop);
+}
+
+function fireLoop(now) {
+  const el = (now - fireStart) / 1500;
+  if (el >= 1) {
+    bctx.clearRect(0, 0, burnCanvas.width, burnCanvas.height);
+    fireParticles = [];
+    fireRaf = null;
+    return;
+  }
+
+  const intensity = Math.sin(el * Math.PI);
+  const count = Math.floor(3 + intensity * 22);
+  const W = burnCanvas.width;
+  const H = burnCanvas.height;
+  for (let i = 0; i < count; i++) {
+    fireParticles.push({
+      x: W * (0.2 + Math.random() * 0.6),
+      y: H * (0.9 + Math.random() * 0.1),
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -(0.6 + Math.random() * 1.6),
+      size: 1.5 + Math.random() * 4.5,
+      life: 1,
+      decay: 0.014 + Math.random() * 0.022,
+      flicker: Math.random() * Math.PI * 2
+    });
+  }
+
+  bctx.clearRect(0, 0, W, H);
+  bctx.globalCompositeOperation = 'lighter';
+  for (const p of fireParticles) {
+    p.life -= p.decay;
+    if (p.life <= 0) continue;
+    const fl = Math.sin(now / 200 + p.flicker);
+    p.x += p.vx + fl * 0.45;
+    p.y += p.vy + fl * 0.18;
+
+    const l = Math.max(p.life, 0);
+    const r = 255;
+    const g = Math.round(180 * l);
+    const b = Math.round(40 * l * l);
+    bctx.globalAlpha = l * 0.85;
+    bctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    bctx.beginPath();
+    bctx.arc(p.x, p.y, p.size * l, 0, Math.PI * 2);
+    bctx.fill();
+  }
+  bctx.globalAlpha = 1;
+  bctx.globalCompositeOperation = 'source-over';
+
+  fireRaf = requestAnimationFrame(fireLoop);
+}
+
+avatarCrop.addEventListener('click', () => {
+  if (burning) return;
+  burning = true;
+
+  for (let i = 0; i < 30; i++) {
+    const e = document.createElement('div');
+    e.className = 'ember';
+    e.style.left = (Math.random() * 100) + '%';
+    e.style.setProperty('--ex', (Math.random() * 70 - 35) + 'px');
+    e.style.animationDelay = (Math.random() * 0.4) + 's';
+    avatarCrop.appendChild(e);
+    setTimeout(() => e.remove(), 1600);
+  }
+
+  avatarImg.classList.add('burning');
+  burnOverlay.classList.add('burning');
+  startFire(performance.now());
+
+  setTimeout(() => {
+    imgIdx = 1 - imgIdx;
+    avatarImg.src = IMGS[imgIdx];
+  }, 1050);
+
+  setTimeout(() => {
+    avatarImg.classList.remove('burning');
+    burnOverlay.classList.remove('burning');
+    burning = false;
+  }, 1650);
+});
 
 // --- MESSAGES ---
 const msgForm = document.getElementById('msgForm');
