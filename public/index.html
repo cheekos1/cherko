@@ -110,7 +110,7 @@ body{
     radial-gradient(circle at 50% 65%, rgba(255,140,30,.95), rgba(255,60,0,.65) 40%, rgba(140,0,0,.85) 70%, transparent 100%);
   mix-blend-mode:screen;
 }
-.av.burning{animation:burnImg .9s ease forwards}
+.av.burning,.burnable.burning{animation:burnImg .9s ease forwards}
 @keyframes burnImg{
   0%{filter:none}
   25%{filter:brightness(1.5) sepia(.5) saturate(4) hue-rotate(-15deg)}
@@ -137,11 +137,6 @@ body{
 @keyframes emberRise{
   0%{transform:translate(0,0) scale(1);opacity:1}
   100%{transform:translate(var(--ex),-110px) scale(.15);opacity:0}
-}
-.avatar-hint{
-  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
-  font-size:.6rem;letter-spacing:2px;text-transform:uppercase;
-  color:rgba(255,255,255,.6);z-index:3;pointer-events:none;
 }
 
 /* --- Crown --- */
@@ -505,6 +500,19 @@ body{
   display:block;width:190px;height:235px;object-fit:cover;
   filter:saturate(.92) contrast(1.03) sepia(.08);
 }
+.polaroid{cursor:pointer}
+.polaroid-photo{
+  position:relative;overflow:hidden;width:190px;height:235px;
+  background:#efe9d8;
+}
+.polaroid-photo img{width:100%;height:100%}
+#brotherBurnCanvas,
+#brotherBurnOverlay{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;
+}
+#brotherBurnCanvas{z-index:3;mix-blend-mode:screen}
+#brotherBurnOverlay{z-index:4;border-radius:0}
 .tape{
   position:absolute;width:72px;height:22px;z-index:2;
   background:rgba(255,255,240,.55);
@@ -619,10 +627,9 @@ body{
       </div>
       <div class="avatar-ring">
         <div class="avatar-crop" id="avatarCrop">
-          <img class="av" id="avatarImg" src="profile.jpg" alt="Abo Cherko">
+          <img class="av burnable" id="avatarImg" src="profile.jpg" alt="Abo Cherko">
           <canvas id="burnCanvas"></canvas>
           <div class="burn-overlay" id="burnOverlay"></div>
-          <span class="avatar-hint">click to burn</span>
         </div>
       </div>
     </div>
@@ -667,10 +674,14 @@ body{
 
   <!-- POLAROID MEMORY -->
   <div class="memory">
-    <div class="polaroid">
+    <div class="polaroid" id="brotherPolaroid">
       <div class="tape tape-l"></div>
       <div class="tape tape-r"></div>
-      <img src="brother.webp" alt="Brother">
+      <div class="polaroid-photo">
+        <img id="brotherImg" class="burnable" src="brother.webp" alt="Brother">
+        <canvas id="brotherBurnCanvas"></canvas>
+        <div class="burn-overlay" id="brotherBurnOverlay"></div>
+      </div>
       <div class="polaroid-caption">my brother <span class="heart">&#x2665;</span></div>
     </div>
     <p class="memory-label">taped to the wall since forever</p>
@@ -894,112 +905,126 @@ function fmt(s) {
   return m + ':' + String(sec).padStart(2, '0');
 }
 
-// --- Burn swap ---
-const avatarImg = document.getElementById('avatarImg');
-const avatarCrop = document.getElementById('avatarCrop');
-const burnOverlay = document.getElementById('burnOverlay');
-const burnCanvas = document.getElementById('burnCanvas');
-const bctx = burnCanvas.getContext('2d');
-const IMGS = ['profile.jpg', 'second.jpg'];
-let imgIdx = 0;
-let burning = false;
+// --- Burn swap (generic) ---
+function setupBurn(cfg) {
+  const container = cfg.container;   // click target + ember host (overflow hidden)
+  const img = cfg.img;
+  const overlay = cfg.overlay;
+  const canvas = cfg.canvas;
+  const imgs = cfg.imgs;
+  const bctx = canvas.getContext('2d');
 
-function sizeCanvas() {
-  burnCanvas.width = avatarCrop.clientWidth;
-  burnCanvas.height = avatarCrop.clientHeight;
+  function size() {
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+  }
+  size();
+  window.addEventListener('resize', size);
+
+  let idx = 0;
+  let busy = false;
+  let particles = [];
+  let fireStart = 0;
+  let fireRaf = null;
+
+  function fireLoop(now) {
+    const el = (now - fireStart) / 1500;
+    if (el >= 1) {
+      bctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles = [];
+      fireRaf = null;
+      return;
+    }
+
+    const intensity = Math.sin(el * Math.PI);
+    const count = Math.floor(3 + intensity * 22);
+    const W = canvas.width;
+    const H = canvas.height;
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: W * (0.2 + Math.random() * 0.6),
+        y: H * (0.9 + Math.random() * 0.1),
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: -(0.6 + Math.random() * 1.6),
+        size: 1.5 + Math.random() * 4.5,
+        life: 1,
+        decay: 0.014 + Math.random() * 0.022,
+        flicker: Math.random() * Math.PI * 2
+      });
+    }
+
+    bctx.clearRect(0, 0, W, H);
+    bctx.globalCompositeOperation = 'lighter';
+    for (const p of particles) {
+      p.life -= p.decay;
+      if (p.life <= 0) continue;
+      const fl = Math.sin(now / 200 + p.flicker);
+      p.x += p.vx + fl * 0.45;
+      p.y += p.vy + fl * 0.18;
+
+      const l = Math.max(p.life, 0);
+      const r = 255;
+      const g = Math.round(180 * l);
+      const b = Math.round(40 * l * l);
+      bctx.globalAlpha = l * 0.85;
+      bctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+      bctx.beginPath();
+      bctx.arc(p.x, p.y, p.size * l, 0, Math.PI * 2);
+      bctx.fill();
+    }
+    bctx.globalAlpha = 1;
+    bctx.globalCompositeOperation = 'source-over';
+
+    fireRaf = requestAnimationFrame(fireLoop);
+  }
+
+  container.addEventListener('click', () => {
+    if (busy) return;
+    busy = true;
+
+    for (let i = 0; i < 30; i++) {
+      const e = document.createElement('div');
+      e.className = 'ember';
+      e.style.left = (Math.random() * 100) + '%';
+      e.style.setProperty('--ex', (Math.random() * 70 - 35) + 'px');
+      e.style.animationDelay = (Math.random() * 0.4) + 's';
+      container.appendChild(e);
+      setTimeout(() => e.remove(), 1600);
+    }
+
+    img.classList.add('burning');
+    overlay.classList.add('burning');
+    particles = [];
+    fireStart = performance.now();
+    fireRaf = requestAnimationFrame(fireLoop);
+
+    setTimeout(() => {
+      idx = 1 - idx;
+      img.src = imgs[idx];
+    }, 1050);
+
+    setTimeout(() => {
+      img.classList.remove('burning');
+      overlay.classList.remove('burning');
+      busy = false;
+    }, 1650);
+  });
 }
-sizeCanvas();
-window.addEventListener('resize', sizeCanvas);
 
-let fireParticles = [];
-let fireStart = 0;
-let fireRaf = null;
+setupBurn({
+  container: document.getElementById('avatarCrop'),
+  img: document.getElementById('avatarImg'),
+  overlay: document.getElementById('burnOverlay'),
+  canvas: document.getElementById('burnCanvas'),
+  imgs: ['profile.jpg', 'second.jpg']
+});
 
-function startFire(now) {
-  fireParticles = [];
-  fireStart = now;
-  fireRaf = requestAnimationFrame(fireLoop);
-}
-
-function fireLoop(now) {
-  const el = (now - fireStart) / 1500;
-  if (el >= 1) {
-    bctx.clearRect(0, 0, burnCanvas.width, burnCanvas.height);
-    fireParticles = [];
-    fireRaf = null;
-    return;
-  }
-
-  const intensity = Math.sin(el * Math.PI);
-  const count = Math.floor(3 + intensity * 22);
-  const W = burnCanvas.width;
-  const H = burnCanvas.height;
-  for (let i = 0; i < count; i++) {
-    fireParticles.push({
-      x: W * (0.2 + Math.random() * 0.6),
-      y: H * (0.9 + Math.random() * 0.1),
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: -(0.6 + Math.random() * 1.6),
-      size: 1.5 + Math.random() * 4.5,
-      life: 1,
-      decay: 0.014 + Math.random() * 0.022,
-      flicker: Math.random() * Math.PI * 2
-    });
-  }
-
-  bctx.clearRect(0, 0, W, H);
-  bctx.globalCompositeOperation = 'lighter';
-  for (const p of fireParticles) {
-    p.life -= p.decay;
-    if (p.life <= 0) continue;
-    const fl = Math.sin(now / 200 + p.flicker);
-    p.x += p.vx + fl * 0.45;
-    p.y += p.vy + fl * 0.18;
-
-    const l = Math.max(p.life, 0);
-    const r = 255;
-    const g = Math.round(180 * l);
-    const b = Math.round(40 * l * l);
-    bctx.globalAlpha = l * 0.85;
-    bctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-    bctx.beginPath();
-    bctx.arc(p.x, p.y, p.size * l, 0, Math.PI * 2);
-    bctx.fill();
-  }
-  bctx.globalAlpha = 1;
-  bctx.globalCompositeOperation = 'source-over';
-
-  fireRaf = requestAnimationFrame(fireLoop);
-}
-
-avatarCrop.addEventListener('click', () => {
-  if (burning) return;
-  burning = true;
-
-  for (let i = 0; i < 30; i++) {
-    const e = document.createElement('div');
-    e.className = 'ember';
-    e.style.left = (Math.random() * 100) + '%';
-    e.style.setProperty('--ex', (Math.random() * 70 - 35) + 'px');
-    e.style.animationDelay = (Math.random() * 0.4) + 's';
-    avatarCrop.appendChild(e);
-    setTimeout(() => e.remove(), 1600);
-  }
-
-  avatarImg.classList.add('burning');
-  burnOverlay.classList.add('burning');
-  startFire(performance.now());
-
-  setTimeout(() => {
-    imgIdx = 1 - imgIdx;
-    avatarImg.src = IMGS[imgIdx];
-  }, 1050);
-
-  setTimeout(() => {
-    avatarImg.classList.remove('burning');
-    burnOverlay.classList.remove('burning');
-    burning = false;
-  }, 1650);
+setupBurn({
+  container: document.getElementById('brotherPolaroid'),
+  img: document.getElementById('brotherImg'),
+  overlay: document.getElementById('brotherBurnOverlay'),
+  canvas: document.getElementById('brotherBurnCanvas'),
+  imgs: ['brother.webp', 'brother2.webp']
 });
 
 // --- MESSAGES ---
