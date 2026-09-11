@@ -118,6 +118,38 @@ async function ensureBucket() {
   } catch {}
 }
 
+async function sbVisit() {
+  const r = await fetch(`${SB_URL}/rest/v1/visits?select=count&id=eq.1`, { headers: sbHeaders() });
+  if (!r.ok) throw new Error(`SB visits read ${r.status}`);
+  const rows = await r.json();
+  const count = (rows[0] && typeof rows[0].count === 'number') ? rows[0].count : 38;
+  const u = await fetch(`${SB_URL}/rest/v1/visits?id=eq.1`, {
+    method: 'PATCH',
+    headers: sbHeaders(true),
+    body: JSON.stringify({ count: count + 1 })
+  });
+  if (!u.ok) throw new Error(`SB visits update ${u.status}`);
+  return count + 1;
+}
+
+app.get('/api/visits', async (req, res) => {
+  if (USE_SB) {
+    try {
+      return res.json({ count: await sbVisit() });
+    } catch (err) {
+      console.error('Supabase visit failed:', err.message);
+    }
+  }
+  const V_FILE = path.join(DATA_DIR, 'visits.json');
+  let c = 38;
+  try {
+    if (fs.existsSync(V_FILE)) c = parseInt(JSON.parse(fs.readFileSync(V_FILE, 'utf8')).count, 10) || 38;
+  } catch {}
+  c++;
+  fs.writeFileSync(V_FILE, JSON.stringify({ count: c }), 'utf8');
+  res.json({ count: c });
+});
+
 app.get('/api/messages', async (req, res) => {
   try {
     if (USE_SB) return res.json(await sbList());

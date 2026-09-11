@@ -74,6 +74,18 @@ body{
   background:radial-gradient(ellipse at center, rgba(10,10,15,.38) 0%, rgba(6,6,12,.78) 100%);
 }
 
+/* --- Visitor counter --- */
+.visitor-count{
+  position:fixed;bottom:14px;left:16px;z-index:3;
+  display:flex;align-items:center;gap:7px;
+  font-size:.66rem;letter-spacing:1.5px;text-transform:uppercase;
+  color:rgba(255,255,255,.55);
+  background:rgba(10,10,18,.55);border:1px solid rgba(139,92,246,.3);
+  padding:6px 12px;border-radius:20px;
+  backdrop-filter:blur(8px);pointer-events:none;
+}
+#visitCount{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+
 /* --- Main content --- */
 .container{
   position:relative;z-index:2;
@@ -620,6 +632,10 @@ body{
 <div class="bg-video-wrap" aria-hidden="true">
   <div id="bgVideo"></div>
   <div class="bg-video-dimmer"></div>
+</div>
+
+<div class="visitor-count" id="visitorCount">
+  <span id="visitCount">38</span> visitors
 </div>
 <div class="noise"></div>
 <div class="floating-msgs" id="floatingMsgs"></div>
@@ -1244,6 +1260,12 @@ function showToast(msg) {
 // Poll for new messages every 10s
 loadMessages();
 setInterval(loadMessages, 10000);
+
+// --- VISITOR COUNTER ---
+fetch('/api/visits')
+  .then((r) => r.json())
+  .then((d) => { document.getElementById('visitCount').textContent = d.count; })
+  .catch(() => {});
 
 // --- PARTICLES ---
 function createParticles() {
