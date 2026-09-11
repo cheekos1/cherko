@@ -65,7 +65,8 @@ body{
 }
 .bg-video-wrap iframe{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  width:100vw;height:56.25vw;min-height:100vh;min-width:177.78vh;
+  width:100vw !important;height:56.25vw !important;
+  min-height:100vh;min-width:177.78vh;
   border:0;pointer-events:none;
 }
 .bg-video-dimmer{
@@ -617,7 +618,7 @@ body{
 <div class="grid-overlay"></div>
 
 <div class="bg-video-wrap" aria-hidden="true">
-  <iframe id="bgVideo" src="https://www.youtube.com/embed/Eg5sr2d_hnA?autoplay=1&mute=1&controls=0&loop=1&playlist=Eg5sr2d_hnA&playsinline=1&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  <div id="bgVideo"></div>
   <div class="bg-video-dimmer"></div>
 </div>
 <div class="noise"></div>
@@ -775,8 +776,11 @@ const PLAYLIST = [
 ];
 
 let ytPlayer = null;
+let bgPlayer = null;
 let playerReady = false;
 let trackIdx = 0;
+
+const BG_SEG = { start: 28, end: 60 };
 
 function onYouTubeIframeAPIReady() {
   ytPlayer = new YT.Player('ytPlayer', {
@@ -809,6 +813,43 @@ function onYouTubeIframeAPIReady() {
       }
     }
   });
+
+  bgPlayer = new YT.Player('bgVideo', {
+    width: '100%',
+    height: '100%',
+    videoId: 'Eg5sr2d_hnA',
+    playerVars: {
+      autoplay: 1,
+      mute: 1,
+      controls: 0,
+      disablekb: 1,
+      playsinline: 1,
+      rel: 0,
+      modestbranding: 1,
+      iv_load_policy: 3
+    },
+    events: {
+      onReady: () => {
+        bgPlayer.mute();
+        bgPlayer.seekTo(BG_SEG.start, true);
+        bgPlayer.playVideo();
+      },
+      onStateChange: (e) => {
+        if (e.data === YT.PlayerState.ENDED) {
+          bgPlayer.seekTo(BG_SEG.start, true);
+          bgPlayer.playVideo();
+        }
+      }
+    }
+  });
+
+  setInterval(() => {
+    try {
+      if (bgPlayer.getPlayerState() === YT.PlayerState.PLAYING && bgPlayer.getCurrentTime() >= BG_SEG.end - 0.2) {
+        bgPlayer.seekTo(BG_SEG.start);
+      }
+    } catch {}
+  }, 250);
 }
 
 function updateTrackInfo() {
