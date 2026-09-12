@@ -30,7 +30,7 @@ body{
 }
 
 /* --- Background --- */
-.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none}
 .bg .orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.15;animation:float 20s ease-in-out infinite}
 .bg .orb:nth-child(1){width:600px;height:600px;background:var(--accent);top:-200px;left:-100px;animation-delay:0s}
 .bg .orb:nth-child(2){width:500px;height:500px;background:var(--pink);bottom:-150px;right:-100px;animation-delay:-7s}
@@ -80,9 +80,9 @@ body{
   display:flex;align-items:center;gap:7px;
   font-size:.66rem;letter-spacing:1.5px;text-transform:uppercase;
   color:rgba(255,255,255,.55);
-  background:rgba(10,10,18,.55);border:1px solid rgba(139,92,246,.3);
+  background:rgba(10,10,18,.72);border:1px solid rgba(139,92,246,.3);
   padding:6px 12px;border-radius:20px;
-  backdrop-filter:blur(8px);pointer-events:none;
+  pointer-events:none;
 }
 #visitCount{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
 
@@ -345,7 +345,7 @@ body{
   padding:10px 20px;border-radius:12px;
   background:var(--surface);border:1px solid var(--border);
   color:var(--text);text-decoration:none;font-size:.85rem;font-weight:500;
-  transition:all .25s ease;backdrop-filter:blur(10px);
+  transition:all .25s ease;
 }
 .socials a:hover{
   background:var(--surface-hover);border-color:var(--accent);
@@ -358,7 +358,6 @@ body{
   width:100%;max-width:400px;
   padding:16px 20px;border-radius:16px;
   background:var(--surface);border:1px solid var(--border);
-  backdrop-filter:blur(20px);
   display:flex;align-items:center;gap:14px;
   animation:fadeUp .8s ease-out .2s both;
 }
@@ -415,7 +414,6 @@ body{
   background:var(--surface);color:var(--text);
   font-family:'Inter',sans-serif;font-size:.85rem;
   outline:none;transition:border-color .2s,box-shadow .2s;
-  backdrop-filter:blur(10px);
   resize:none;
 }
 .input-wrap input::placeholder,.input-wrap textarea::placeholder{color:var(--text-dim)}
@@ -462,10 +460,10 @@ body{
 .float-msg{
   position:absolute;bottom:-120px;
   padding:14px 18px;border-radius:14px;
-  background:rgba(10,10,20,.68);
+  background:rgba(10,10,20,.88);
   border:1px solid rgba(139,92,246,.55);
   box-shadow:0 0 16px rgba(139,92,246,.35), 0 0 42px rgba(139,92,246,.18);
-  backdrop-filter:blur(12px);color:var(--text);
+  color:var(--text);
   font-size:.78rem;line-height:1.5;
   width:240px;
   opacity:0;
@@ -475,7 +473,6 @@ body{
 .float-msg::after{
   content:'';position:absolute;inset:-3px;border-radius:17px;z-index:-1;
   background:linear-gradient(135deg,rgba(139,92,246,.55),rgba(236,72,153,.45),rgba(6,182,212,.4));
-  filter:blur(16px);
   animation:msgGlowPulse 2.6s ease-in-out infinite;
 }
 @keyframes msgGlowPulse{
@@ -516,6 +513,18 @@ body{
     transform:translate(var(--endX), calc(-100vh - 220px)) scale(2.4) rotateX(-4deg);
     opacity:0;
     filter:blur(4px);
+  }
+}
+@keyframes floatTowardLite{
+  0%{
+    transform:translate(0,0) scale(.15) rotateX(14deg);
+    opacity:0;
+  }
+  10%{opacity:.7}
+  60%{opacity:.6}
+  100%{
+    transform:translate(var(--endX), calc(-100vh - 220px)) scale(2.4) rotateX(-4deg);
+    opacity:0;
   }
 }
 
@@ -594,6 +603,7 @@ body{
   .name{font-size:1.7rem}
   .form-row{flex-direction:column}
   .polaroid img{width:150px;height:185px}
+  .float-msg{animation-name:floatTowardLite}
 }
 
 /* --- Toast --- */
@@ -1220,7 +1230,7 @@ function spawnFloatCard(m) {
   card.style.fontSize = size + 'rem';
   card.style.animationName = 'none';
   card.offsetHeight;
-  card.style.animationName = 'floatToward';
+  card.style.animationName = (window.matchMedia('(max-width:480px)').matches ? 'floatTowardLite' : 'floatToward');
   card.style.setProperty('--endX', ((endX - x) / 100 * window.innerWidth) + 'px');
   card.style.animationTimingFunction = 'cubic-bezier(0.25,0.1,0.25,1)';
 
